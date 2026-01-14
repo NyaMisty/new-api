@@ -40,6 +40,7 @@ const LogsTable = (logsData) => {
     handlePageSizeChange,
     copyText,
     showUserInfoFunc,
+    showLogContent,
     hasExpandableRows,
     isAdminUser,
     t,
@@ -53,9 +54,10 @@ const LogsTable = (logsData) => {
       COLUMN_KEYS,
       copyText,
       showUserInfoFunc,
+      showLogContent,
       isAdminUser,
     });
-  }, [t, COLUMN_KEYS, copyText, showUserInfoFunc, isAdminUser]);
+  }, [t, COLUMN_KEYS, copyText, showUserInfoFunc, showLogContent, isAdminUser]);
 
   // Filter columns based on visibility settings
   const getVisibleColumns = () => {

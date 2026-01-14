@@ -124,6 +124,12 @@ const SystemSetting = () => {
   const [domainList, setDomainList] = useState([]);
   const [ipList, setIpList] = useState([]);
   const [allowedPorts, setAllowedPorts] = useState([]);
+  const [envVariables, setEnvVariables] = useState([]);
+  const [loadingEnv, setLoadingEnv] = useState(false);
+  const [databaseInfo, setDatabaseInfo] = useState(null);
+  const [loadingDb, setLoadingDb] = useState(false);
+  const [isSelfHostedMode, setIsSelfHostedMode] = useState(false);
+  const [checkingMode, setCheckingMode] = useState(true);
 
   const getOptions = async () => {
     setLoading(true);
@@ -235,6 +241,26 @@ const SystemSetting = () => {
 
   useEffect(() => {
     getOptions();
+  }, []);
+
+  // Check if in self-hosted mode by trying to fetch environment variables
+  useEffect(() => {
+    const checkSelfHostedMode = async () => {
+      try {
+        const res = await API.get('/api/env/');
+        if (res.data && res.data.success) {
+          setIsSelfHostedMode(true);
+        } else {
+          setIsSelfHostedMode(false);
+        }
+      } catch (error) {
+        // If request fails or is forbidden, not in self-hosted mode
+        setIsSelfHostedMode(false);
+      } finally {
+        setCheckingMode(false);
+      }
+    };
+    checkSelfHostedMode();
   }, []);
 
   const updateOptions = async (options) => {
@@ -632,6 +658,38 @@ const SystemSetting = () => {
     }
   };
 
+  const loadEnvVariables = async () => {
+    setLoadingEnv(true);
+    try {
+      const res = await API.get('/api/env/');
+      const { success, message, data } = res.data;
+      if (success) {
+        setEnvVariables(data || []);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(t('获取环境变量失败'));
+    }
+    setLoadingEnv(false);
+  };
+
+  const loadDatabaseInfo = async () => {
+    setLoadingDb(true);
+    try {
+      const res = await API.get('/api/database/');
+      const { success, message, data } = res.data;
+      if (success) {
+        setDatabaseInfo(data);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError(t('获取数据库信息失败'));
+    }
+    setLoadingDb(false);
+  };
+
   const submitPasskeySettings = async () => {
     // 使用formApi直接获取当前表单值
     const formValues = formApiRef.current?.getValues() || {};
@@ -725,6 +783,242 @@ const SystemSetting = () => {
                   <Button onClick={submitServerAddress}>
                     {t('更新服务器地址')}
                   </Button>
+                </Form.Section>
+              </Card>
+
+              <Card>
+                <Form.Section text={t('环境变量')}>
+                  <Banner
+                    type='info'
+                    description={t(
+                      '显示当前已启用的环境变量配置。这些变量通过 .env 文件或系统环境变量设置。',
+                    )}
+                    style={{ marginBottom: 20, marginTop: 16 }}
+                  />
+                  {!checkingMode && !isSelfHostedMode ? (
+                    <Banner
+                      type='warning'
+                      description={t('此功能仅在自用模式下可用。请设置环境变量 SELF_HOSTED_MODE=true')}
+                      style={{ marginBottom: 16 }}
+                    />
+                  ) : (
+                    <Button 
+                      onClick={loadEnvVariables}
+                      loading={loadingEnv}
+                      style={{ marginBottom: 16 }}
+                    >
+                      {t('加载环境变量')}
+                    </Button>
+                  )}
+                  
+                  {envVariables.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      {/* Group by category */}
+                      {Object.entries(
+                        envVariables.reduce((acc, env) => {
+                          const category = env.category || t('其他');
+                          if (!acc[category]) acc[category] = [];
+                          acc[category].push(env);
+                          return acc;
+                        }, {})
+                      ).map(([category, vars]) => (
+                        <div key={category} style={{ marginBottom: 24 }}>
+                          <Text strong style={{ fontSize: 16, display: 'block', marginBottom: 12 }}>
+                            {category}
+                          </Text>
+                          <div style={{ 
+                            display: 'grid', 
+                            gap: '12px',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'
+                          }}>
+                            {vars.map((env) => (
+                              <div 
+                                key={env.key}
+                                style={{
+                                  padding: '12px',
+                                  border: '1px solid var(--semi-color-border)',
+                                  borderRadius: '4px',
+                                  backgroundColor: 'var(--semi-color-fill-0)'
+                                }}
+                              >
+                                <div style={{ marginBottom: 4 }}>
+                                  <Text strong style={{ fontSize: 14 }}>
+                                    {env.key}
+                                  </Text>
+                                </div>
+                                <div style={{ marginBottom: 4 }}>
+                                  <Text 
+                                    type="tertiary" 
+                                    size="small"
+                                    style={{ wordBreak: 'break-all' }}
+                                  >
+                                    {env.value}
+                                  </Text>
+                                </div>
+                                {env.description && (
+                                  <div>
+                                    <Text type="quaternary" size="small">
+                                      {env.description}
+                                    </Text>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {envVariables.length === 0 && !loadingEnv && (
+                    <Banner
+                      type='warning'
+                      description={t('点击"加载环境变量"按钮查看当前已启用的环境变量')}
+                      style={{ marginTop: 16 }}
+                    />
+                  )}
+                </Form.Section>
+              </Card>
+
+              <Card>
+                <Form.Section text={t('数据库配置')}>
+                  <Banner
+                    type='info'
+                    description={t(
+                      '显示当前系统使用的数据库配置信息，包括数据库类型、连接地址等。',
+                    )}
+                    style={{ marginBottom: 20, marginTop: 16 }}
+                  />
+                  {!checkingMode && !isSelfHostedMode ? (
+                    <Banner
+                      type='warning'
+                      description={t('此功能仅在自用模式下可用。请设置环境变量 SELF_HOSTED_MODE=true')}
+                      style={{ marginBottom: 16 }}
+                    />
+                  ) : (
+                    <Button 
+                      onClick={loadDatabaseInfo}
+                      loading={loadingDb}
+                      style={{ marginBottom: 16 }}
+                    >
+                      {t('加载数据库信息')}
+                    </Button>
+                  )}
+                  
+                  {databaseInfo && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{
+                        padding: '16px',
+                        border: '1px solid var(--semi-color-border)',
+                        borderRadius: '4px',
+                        backgroundColor: 'var(--semi-color-fill-0)'
+                      }}>
+                        <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
+                          <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                            <div style={{ marginBottom: 16 }}>
+                              <Text strong>{t('数据库类型')}</Text>
+                              <div style={{ marginTop: 4 }}>
+                                <Text type="tertiary">
+                                  {databaseInfo.type === 'sqlite' ? 'SQLite' :
+                                   databaseInfo.type === 'mysql' ? 'MySQL' :
+                                   databaseInfo.type === 'postgresql' ? 'PostgreSQL' :
+                                   databaseInfo.type}
+                                </Text>
+                              </div>
+                            </div>
+                          </Col>
+                          
+                          {databaseInfo.type === 'sqlite' && databaseInfo.path && (
+                            <>
+                              <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                                <div style={{ marginBottom: 16 }}>
+                                  <Text strong>{t('数据库文件位置')}</Text>
+                                  <div style={{ marginTop: 4 }}>
+                                    <Text 
+                                      type="tertiary"
+                                      style={{ wordBreak: 'break-all', fontSize: 12 }}
+                                    >
+                                      {databaseInfo.path}
+                                    </Text>
+                                  </div>
+                                </div>
+                              </Col>
+                              
+                              {databaseInfo.fullPath && (
+                                <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                                  <div style={{ marginBottom: 16 }}>
+                                    <Text strong>{t('完整路径')}</Text>
+                                    <div style={{ marginTop: 4 }}>
+                                      <Text 
+                                        type="tertiary"
+                                        style={{ wordBreak: 'break-all', fontSize: 12 }}
+                                      >
+                                        {databaseInfo.fullPath}
+                                      </Text>
+                                    </div>
+                                  </div>
+                                </Col>
+                              )}
+                            </>
+                          )}
+                          
+                          {databaseInfo.type !== 'sqlite' && databaseInfo.host && (
+                            <>
+                              <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                                <div style={{ marginBottom: 16 }}>
+                                  <Text strong>{t('主机地址')}</Text>
+                                  <div style={{ marginTop: 4 }}>
+                                    <Text type="tertiary">{databaseInfo.host}</Text>
+                                  </div>
+                                </div>
+                              </Col>
+                              
+                              {databaseInfo.port && (
+                                <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                                  <div style={{ marginBottom: 16 }}>
+                                    <Text strong>{t('端口')}</Text>
+                                    <div style={{ marginTop: 4 }}>
+                                      <Text type="tertiary">{databaseInfo.port}</Text>
+                                    </div>
+                                  </div>
+                                </Col>
+                              )}
+                              
+                              {databaseInfo.username && (
+                                <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                                  <div style={{ marginBottom: 16 }}>
+                                    <Text strong>{t('用户名')}</Text>
+                                    <div style={{ marginTop: 4 }}>
+                                      <Text type="tertiary">{databaseInfo.username}</Text>
+                                    </div>
+                                  </div>
+                                </Col>
+                              )}
+                              
+                              {databaseInfo.database && (
+                                <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                                  <div style={{ marginBottom: 16 }}>
+                                    <Text strong>{t('数据库名')}</Text>
+                                    <div style={{ marginTop: 4 }}>
+                                      <Text type="tertiary">{databaseInfo.database}</Text>
+                                    </div>
+                                  </div>
+                                </Col>
+                              )}
+                            </>
+                          )}
+                        </Row>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!databaseInfo && !loadingDb && (
+                    <Banner
+                      type='warning'
+                      description={t('点击"加载数据库信息"按钮查看当前数据库配置')}
+                      style={{ marginTop: 16 }}
+                    />
+                  )}
                 </Form.Section>
               </Card>
 

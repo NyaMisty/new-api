@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -166,4 +167,63 @@ func DeleteHistoryLogs(c *gin.Context) {
 		"data":    count,
 	})
 	return
+}
+
+// GetLogContent 获取日志的详细请求和响应内容（仅管理员可用）
+func GetLogContent(c *gin.Context) {
+	logIdStr := c.Param("id")
+	logId, err := strconv.Atoi(logIdStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "invalid log id",
+		})
+		return
+	}
+
+	// 检查是否启用了 LOG_CONTENTS
+	if !common.LogContentsEnabled {
+		c.JSON(http.StatusForbidden, gin.H{
+			"success": false,
+			"message": "log contents feature is not enabled",
+		})
+		return
+	}
+
+	// 获取日志内容
+	logContent, err := model.GetLogContentByLogId(logId)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"message": "log content not found",
+		})
+		return
+	}
+
+	// 解析 JSON 字符串为对象
+	var requestData interface{}
+	var responseData interface{}
+
+	if logContent.RequestBody != "" {
+		if err := json.Unmarshal([]byte(logContent.RequestBody), &requestData); err != nil {
+			// 如果解析失败，直接返回字符串
+			requestData = logContent.RequestBody
+		}
+	}
+
+	if logContent.ResponseBody != "" {
+		if err := json.Unmarshal([]byte(logContent.ResponseBody), &responseData); err != nil {
+			// 如果解析失败，直接返回字符串
+			responseData = logContent.ResponseBody
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"request":  requestData,
+			"response": responseData,
+		},
+	})
 }

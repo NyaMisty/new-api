@@ -257,6 +257,10 @@ func RelayTaskSubmit(c *gin.Context, info *relaycommon.RelayInfo) (taskErr *dto.
 					TokenId:   info.TokenId,
 					Group:     info.UsingGroup,
 					Other:     other,
+
+					// [mod-misty] body record
+					RequestBody:  info.RequestBody,
+					ResponseBody: info.ResponseBody,
 				})
 				model.UpdateUserUsedQuotaAndRequestCount(info.UserId, quota)
 				model.UpdateChannelUsedQuota(info.ChannelId, quota)

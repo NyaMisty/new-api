@@ -216,16 +216,24 @@ func InjectGoogleAnalytics() {
 }
 
 func InitResources() error {
-	// Initialize resources here if needed
-	// This is a placeholder function for future resource initialization
-	err := godotenv.Load(".env")
-	if err != nil {
-		if common.DebugEnabled {
-			common.SysLog("No .env file found, using default environment variables. If needed, please create a .env file and set the relevant variables.")
+	// First, load .env from current directory
+	_ = godotenv.Load(".env")
+	
+	// Then, load .env from executable directory to override (if exists)
+	exePath, err := os.Executable()
+	if err == nil {
+		exeDir := exePath[:strings.LastIndex(exePath, string(os.PathSeparator))]
+		exeEnvPath := exeDir + string(os.PathSeparator) + ".env"
+		
+		// Check if .env file exists in executable directory
+		if _, statErr := os.Stat(exeEnvPath); statErr == nil {
+			// Load and override environment variables
+			_ = godotenv.Load(exeEnvPath)
+			common.SysLog("Loaded .env file from executable directory: " + exeEnvPath)
 		}
 	}
-
-	// 加载环境变量
+	
+	// 加载环境变量 (this will use the env vars we just loaded)
 	common.InitEnv()
 
 	logger.SetupLogger()

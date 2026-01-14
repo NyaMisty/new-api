@@ -25,6 +25,7 @@ import {
   Tooltip,
   Popover,
   Typography,
+  Button,
 } from '@douyinfe/semi-ui';
 import {
   timestamp2string,
@@ -241,6 +242,7 @@ export const getLogsColumns = ({
   copyText,
   showUserInfoFunc,
   isAdminUser,
+  showLogContent,
 }) => {
   return [
     {
@@ -516,6 +518,29 @@ export const getLogsColumns = ({
           }
         }
         return isAdminUser ? <div>{content}</div> : <></>;
+      },
+    },
+    {
+      key: COLUMN_KEYS.ACTIONS,
+      title: t('操作'),
+      dataIndex: 'actions',
+      fixed: 'right',
+      width: 100,
+      render: (text, record, index) => {
+        // 只在管理员模式下显示，且只对消费日志类型显示
+        if (!isAdminUser || record.type !== 2) {
+          return <></>;
+        }
+        return (
+          <Button
+            theme='borderless'
+            type='primary'
+            size='small'
+            onClick={() => showLogContent(record.id)}
+          >
+            {t('查看详情')}
+          </Button>
+        );
       },
     },
     {

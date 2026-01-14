@@ -15,6 +15,7 @@ var SystemName = "New API"
 var Footer = ""
 var Logo = ""
 var TopUpLink = ""
+var SelfHostedMode = false // whether in self-hosted mode, only show env and database info in this mode
 
 // var ChatLink = ""
 // var ChatLink2 = ""
@@ -72,6 +73,7 @@ var DebugEnabled bool
 var MemoryCacheEnabled bool
 
 var LogConsumeEnabled = true
+var LogContentsEnabled = false
 
 var SMTPServer = ""
 var SMTPPort = 587

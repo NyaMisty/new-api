@@ -97,6 +97,11 @@ func ResponsesHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *
 		}
 	}
 
+	// 当 LOG_CONTENTS 启用时，捕获响应体
+	if common.LogContentsEnabled && httpResp != nil {
+		relaycommon.CaptureResponseBody(httpResp, info)
+	}
+
 	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
 	if newAPIError != nil {
 		// reset status code 重置状态码

@@ -213,6 +213,8 @@ func InitDB() (err error) {
 func InitLogDB() (err error) {
 	if os.Getenv("LOG_SQL_DSN") == "" {
 		LOG_DB = DB
+		// 当 LOG_SQL_DSN 为空时，使用主数据库，此时日志表由 migrateDB() 负责创建
+		// 但仍然需要检查 migrateDB() 是否被调用，如果没有则这里也不需要做什么
 		return
 	}
 	db, err := chooseDB("LOG_SQL_DSN", true)
@@ -257,6 +259,7 @@ func migrateDB() error {
 		&Redemption{},
 		&Ability{},
 		&Log{},
+		&LogContent{},
 		&Midjourney{},
 		&TopUp{},
 		&QuotaData{},
@@ -291,6 +294,7 @@ func migrateDBFast() error {
 		{&Redemption{}, "Redemption"},
 		{&Ability{}, "Ability"},
 		{&Log{}, "Log"},
+		{&LogContent{}, "LogContent"},
 		{&Midjourney{}, "Midjourney"},
 		{&TopUp{}, "TopUp"},
 		{&QuotaData{}, "QuotaData"},
@@ -333,8 +337,14 @@ func migrateDBFast() error {
 func migrateLOGDB() error {
 	var err error
 	if err = LOG_DB.AutoMigrate(&Log{}); err != nil {
+		common.SysLog("failed to migrate Log table: " + err.Error())
 		return err
 	}
+	if err = LOG_DB.AutoMigrate(&LogContent{}); err != nil {
+		common.SysLog("failed to migrate LogContent table: " + err.Error())
+		return err
+	}
+	common.SysLog("log database migrated successfully")
 	return nil
 }
 

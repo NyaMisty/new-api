@@ -24,6 +24,7 @@ import LogsActions from './UsageLogsActions';
 import LogsFilters from './UsageLogsFilters';
 import ColumnSelectorModal from './modals/ColumnSelectorModal';
 import UserInfoModal from './modals/UserInfoModal';
+import LogContentModal from './modals/LogContentModal';
 import { useLogsData } from '../../../hooks/usage-logs/useUsageLogsData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { createCardProPagination } from '../../../helpers/utils';
@@ -37,6 +38,12 @@ const LogsPage = () => {
       {/* Modals */}
       <ColumnSelectorModal {...logsData} />
       <UserInfoModal {...logsData} />
+      <LogContentModal
+        visible={logsData.showLogContentModal}
+        onClose={() => logsData.setShowLogContentModal(false)}
+        logId={logsData.selectedLogId}
+        t={logsData.t}
+      />
 
       {/* Main Content */}
       <CardPro

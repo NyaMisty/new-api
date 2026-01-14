@@ -58,6 +58,7 @@ export const useLogsData = () => {
     COST: 'cost',
     RETRY: 'retry',
     IP: 'ip',
+    ACTIONS: 'actions',
     DETAILS: 'details',
   };
 
@@ -111,6 +112,10 @@ export const useLogsData = () => {
   // User info modal state
   const [showUserInfo, setShowUserInfoModal] = useState(false);
   const [userInfoData, setUserInfoData] = useState(null);
+
+  // Log content modal state
+  const [showLogContentModal, setShowLogContentModal] = useState(false);
+  const [selectedLogId, setSelectedLogId] = useState(null);
 
   // Load saved column preferences from localStorage
   useEffect(() => {
@@ -607,6 +612,12 @@ export const useLogsData = () => {
     );
   };
 
+  // Show log content modal
+  const showLogContent = (logId) => {
+    setSelectedLogId(logId);
+    setShowLogContentModal(true);
+  };
+
   return {
     // Basic state
     logs,
@@ -645,6 +656,12 @@ export const useLogsData = () => {
     setShowUserInfoModal,
     userInfoData,
     showUserInfoFunc,
+
+    // Log content modal
+    showLogContentModal,
+    setShowLogContentModal,
+    selectedLogId,
+    showLogContent,
 
     // Functions
     loadLogs,

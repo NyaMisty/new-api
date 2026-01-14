@@ -50,6 +50,14 @@ const (
 	LogTypeRefund  = 6
 )
 
+// getSample 返回字符串的前n个字符，用于调试
+func getSample(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
+
 func formatUserLogs(logs []*Log) {
 	for i := range logs {
 		logs[i].ChannelName = ""
@@ -151,6 +159,8 @@ type RecordConsumeLogParams struct {
 	IsStream         bool                   `json:"is_stream"`
 	Group            string                 `json:"group"`
 	Other            map[string]interface{} `json:"other"`
+	RequestBody      string                 `json:"request_body"`
+	ResponseBody     string                 `json:"response_body"`
 }
 
 func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams) {
@@ -159,6 +169,10 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	}
 	logger.LogInfo(c, fmt.Sprintf("record consume log: userId=%d, params=%s", userId, common.GetJsonString(params)))
 	username := c.GetString("username")
+	
+	// 处理 content 字段
+	content := params.Content
+	
 	otherStr := common.MapToJsonStr(params.Other)
 	// 判断是否需要记录 IP
 	needRecordIp := false
@@ -172,7 +186,7 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 		Username:         username,
 		CreatedAt:        common.GetTimestamp(),
 		Type:             LogTypeConsume,
-		Content:          params.Content,
+		Content:          content,
 		PromptTokens:     params.PromptTokens,
 		CompletionTokens: params.CompletionTokens,
 		TokenName:        params.TokenName,
@@ -194,7 +208,19 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	err := LOG_DB.Create(log).Error
 	if err != nil {
 		logger.LogError(c, "failed to record log: "+err.Error())
+		return
 	}
+	
+	// 当 LOG_CONTENTS=true 时，将详细的请求和响应内容存入 log_contents 表
+	logger.LogInfo(c, fmt.Sprintf("check log contents recording: LogContentsEnabled=%v, RequestBodyLen=%d, ResponseBodyLen=%d", common.LogContentsEnabled, len(params.RequestBody), len(params.ResponseBody)))
+	if common.DebugEnabled {
+		logger.LogDebug(c, fmt.Sprintf("RequestBody sample (first 200 chars): %s", getSample(params.RequestBody, 200)))
+		logger.LogDebug(c, fmt.Sprintf("ResponseBody sample (first 200 chars): %s", getSample(params.ResponseBody, 200)))
+	}
+	if common.LogContentsEnabled && (params.RequestBody != "" || params.ResponseBody != "") {
+		_ = CreateLogContent(c, log.Id, params.RequestBody, params.ResponseBody)
+	}
+	
 	if common.DataExportEnabled {
 		gopool.Go(func() {
 			LogQuotaData(userId, username, params.ModelName, params.Quota, common.GetTimestamp(), params.PromptTokens+params.CompletionTokens)

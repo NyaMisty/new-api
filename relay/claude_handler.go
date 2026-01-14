@@ -153,6 +153,11 @@ func ClaudeHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 		}
 	}
 
+	// 当 LOG_CONTENTS 启用时，捕获响应体
+	if common.LogContentsEnabled && httpResp != nil {
+		relaycommon.CaptureResponseBody(httpResp, info)
+	}
+
 	usage, newAPIError := adaptor.DoResponse(c, httpResp, info)
 	//log.Printf("usage: %v", usage)
 	if newAPIError != nil {

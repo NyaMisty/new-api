@@ -80,7 +80,9 @@ func InitEnv() {
 	// Initialize variables from constants.go that were using environment variables
 	DebugEnabled = os.Getenv("DEBUG") == "true"
 	MemoryCacheEnabled = os.Getenv("MEMORY_CACHE_ENABLED") == "true"
+	LogContentsEnabled = os.Getenv("LOG_CONTENTS") == "true"
 	IsMasterNode = os.Getenv("NODE_TYPE") != "slave"
+	SelfHostedMode = os.Getenv("SELF_HOSTED_MODE") == "true"
 
 	// Parse requestInterval and set RequestInterval
 	requestInterval, _ = strconv.Atoi(os.Getenv("POLLING_INTERVAL"))

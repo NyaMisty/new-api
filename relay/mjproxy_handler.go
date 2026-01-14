@@ -228,6 +228,10 @@ func RelaySwapFace(c *gin.Context, info *relaycommon.RelayInfo) *dto.MidjourneyR
 				TokenId:   info.TokenId,
 				Group:     info.UsingGroup,
 				Other:     other,
+
+				// [mod-misty] body record
+				RequestBody:  info.RequestBody,
+				ResponseBody: info.ResponseBody,
 			})
 			model.UpdateUserUsedQuotaAndRequestCount(info.UserId, priceData.Quota)
 			model.UpdateChannelUsedQuota(info.ChannelId, priceData.Quota)
@@ -528,6 +532,9 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 				TokenId:   relayInfo.TokenId,
 				Group:     relayInfo.UsingGroup,
 				Other:     other,
+				// [mod-misty] body record
+				RequestBody:  relayInfo.RequestBody,
+				ResponseBody: relayInfo.ResponseBody,
 			})
 			model.UpdateUserUsedQuotaAndRequestCount(relayInfo.UserId, priceData.Quota)
 			model.UpdateChannelUsedQuota(relayInfo.ChannelId, priceData.Quota)

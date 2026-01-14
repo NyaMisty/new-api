@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -116,6 +117,10 @@ type RelayInfo struct {
 	FinalPreConsumedQuota  int  // 最终预消耗的配额
 	IsClaudeBetaQuery      bool // /v1/messages?beta=true
 	IsChannelTest          bool // channel test request
+	RequestBody            string // 请求体内容，当LOG_CONTENTS启用时记录
+	ResponseBody           string // 响应体内容，当LOG_CONTENTS启用时记录
+	responseBodyBuilder    strings.Builder // 用于累积流式响应数据
+	responseBodyMutex      sync.Mutex     // 保护 responseBodyBuilder 的并发访问
 
 	PriceData types.PriceData
 
@@ -502,6 +507,45 @@ func (info *RelayInfo) SetFirstResponseTime() {
 
 func (info *RelayInfo) HasSendResponse() bool {
 	return info.FirstResponseTime.After(info.StartTime)
+}
+
+// AppendResponseBody 将响应体数据追加到累积缓冲区
+func (info *RelayInfo) AppendResponseBody(data string) {
+	if !common.LogContentsEnabled {
+		return
+	}
+	if info == nil {
+		return
+	}
+	info.responseBodyMutex.Lock()
+	defer info.responseBodyMutex.Unlock()
+	if info.responseBodyBuilder.Len() > 0 {
+		info.responseBodyBuilder.WriteString("\n")
+	}
+	info.responseBodyBuilder.WriteString(data)
+	if common.DebugEnabled {
+		fmt.Printf("AppendResponseBody: added %d bytes, total: %d bytes\n", len(data), info.responseBodyBuilder.Len())
+	}
+}
+
+// FinalizeResponseBody 将累积的响应体保存到 ResponseBody 字段
+func (info *RelayInfo) FinalizeResponseBody() {
+	if !common.LogContentsEnabled {
+		return
+	}
+	if info == nil {
+		return
+	}
+	info.responseBodyMutex.Lock()
+	defer info.responseBodyMutex.Unlock()
+	if info.responseBodyBuilder.Len() > 0 {
+		info.ResponseBody = info.responseBodyBuilder.String()
+		if common.DebugEnabled {
+			fmt.Printf("FinalizeResponseBody: saved %d bytes to ResponseBody\n", len(info.ResponseBody))
+		}
+	} else if common.DebugEnabled {
+		fmt.Println("FinalizeResponseBody: no data to save, builder is empty")
+	}
 }
 
 type TaskRelayInfo struct {

@@ -126,6 +126,16 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.POST("/rest_model_ratio", controller.ResetModelRatio)
 			optionRoute.POST("/migrate_console_setting", controller.MigrateConsoleSetting) // 用于迁移检测的旧键，下个版本会删除
 		}
+		envRoute := apiRouter.Group("/env")
+		envRoute.Use(middleware.RootAuth())
+		{
+			envRoute.GET("/", controller.GetEnvVariables)
+		}
+		dbRoute := apiRouter.Group("/database")
+		dbRoute.Use(middleware.RootAuth())
+		{
+			dbRoute.GET("/", controller.GetDatabaseInfo)
+		}
 		ratioSyncRoute := apiRouter.Group("/ratio_sync")
 		ratioSyncRoute.Use(middleware.RootAuth())
 		{
@@ -206,6 +216,7 @@ func SetApiRouter(router *gin.Engine) {
 		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
 		logRoute.GET("/self", middleware.UserAuth(), controller.GetUserLogs)
 		logRoute.GET("/self/search", middleware.UserAuth(), controller.SearchUserLogs)
+		logRoute.GET("/content/:id", middleware.UserAuth(), controller.GetLogContent)
 
 		dataRoute := apiRouter.Group("/data")
 		dataRoute.GET("/", middleware.AdminAuth(), controller.GetAllQuotaDates)

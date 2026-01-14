@@ -187,6 +187,11 @@ func GeminiHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *typ
 		}
 	}
 
+	// 当 LOG_CONTENTS 启用时，捕获响应体
+	if common.LogContentsEnabled && resp != nil {
+		relaycommon.CaptureResponseBody(resp.(*http.Response), info)
+	}
+
 	usage, openaiErr := adaptor.DoResponse(c, resp.(*http.Response), info)
 	if openaiErr != nil {
 		service.ResetStatusCode(openaiErr, statusCodeMappingStr)
@@ -284,6 +289,11 @@ func GeminiEmbeddingHandler(c *gin.Context, info *relaycommon.RelayInfo) (newAPI
 			service.ResetStatusCode(newAPIError, statusCodeMappingStr)
 			return newAPIError
 		}
+	}
+
+	// 当 LOG_CONTENTS 启用时，捕获响应体
+	if common.LogContentsEnabled && resp != nil {
+		relaycommon.CaptureResponseBody(resp.(*http.Response), info)
 	}
 
 	usage, openaiErr := adaptor.DoResponse(c, resp.(*http.Response), info)

@@ -1,7 +1,9 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -224,5 +226,32 @@ func ValidateBasicTaskRequest(c *gin.Context, info *RelayInfo, action string) *d
 	}
 
 	storeTaskRequest(c, info, action, req)
+	return nil
+}
+
+// CaptureResponseBody 从 HTTP 响应中捕获响应体并保存到 RelayInfo
+// 注意：此函数会读取响应体，需要在 adaptor.DoResponse 之前调用
+func CaptureResponseBody(resp *http.Response, info *RelayInfo) error {
+	if resp == nil || resp.Body == nil {
+		return nil
+	}
+
+	// 只在 LOG_CONTENTS 启用时捕获响应体
+	if !common.LogContentsEnabled {
+		return nil
+	}
+
+	// 读取响应体
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	// 保存原始响应体到 RelayInfo
+	info.ResponseBody = string(bodyBytes)
+
+	// 重置响应体，使其可以再次被读取
+	resp.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 	return nil
 }

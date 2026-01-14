@@ -30,6 +30,17 @@ import (
 func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types.NewAPIError) {
 	info.InitChannelMeta(c)
 
+	// 当 LOG_CONTENTS 启用时，记录请求体
+	if common.LogContentsEnabled {
+		body, err := common.GetRequestBody(c)
+		if err == nil {
+			info.RequestBody = string(body)
+			logger.LogInfo(c, fmt.Sprintf("request body captured: %d bytes", len(info.RequestBody)))
+		} else {
+			logger.LogError(c, fmt.Sprintf("failed to capture request body: %v", err))
+		}
+	}
+
 	textReq, ok := info.Request.(*dto.GeneralOpenAIRequest)
 	if !ok {
 		return types.NewErrorWithStatusCode(fmt.Errorf("invalid request type, expected dto.GeneralOpenAIRequest, got %T", info.Request), types.ErrorCodeInvalidRequest, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
@@ -176,6 +187,11 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 
 		logger.LogDebug(c, fmt.Sprintf("text request body: %s", string(jsonData)))
 
+		// 当 LOG_CONTENTS 启用时且还没有记录请求体时，记录转换后的请求体
+		if common.LogContentsEnabled && info.RequestBody == "" {
+			info.RequestBody = string(jsonData)
+		}
+
 		requestBody = bytes.NewBuffer(jsonData)
 	}
 
@@ -196,6 +212,11 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 			service.ResetStatusCode(newApiErr, statusCodeMappingStr)
 			return newApiErr
 		}
+	}
+
+	// 当 LOG_CONTENTS 启用时，捕获响应体
+	if common.LogContentsEnabled && httpResp != nil {
+		relaycommon.CaptureResponseBody(httpResp, info)
 	}
 
 	usage, newApiErr := adaptor.DoResponse(c, httpResp, info)
@@ -503,5 +524,7 @@ func postConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, usage 
 		IsStream:         relayInfo.IsStream,
 		Group:            relayInfo.UsingGroup,
 		Other:            other,
+		RequestBody:      relayInfo.RequestBody,
+		ResponseBody:     relayInfo.ResponseBody,
 	})
 }

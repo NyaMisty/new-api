@@ -220,6 +220,12 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 			if !strings.HasPrefix(data, "[DONE]") {
 				info.SetFirstResponseTime()
 
+				// 当 LOG_CONTENTS 启用时，累积流式响应数据到 RelayInfo
+				if common.DebugEnabled {
+					logger.LogDebug(c, fmt.Sprintf("StreamScannerHandler: calling AppendResponseBody with %d bytes", len(data)))
+				}
+				info.AppendResponseBody(data)
+
 				// 使用超时机制防止写操作阻塞
 				done := make(chan bool, 1)
 				go func() {
@@ -268,5 +274,13 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 	case <-c.Request.Context().Done():
 		// 客户端断开连接
 		logger.LogInfo(c, "client disconnected")
+	}
+
+	// 当 LOG_CONTENTS 启用时，将累积的流式响应数据保存到 info.ResponseBody
+	if info != nil {
+		if common.DebugEnabled {
+			logger.LogDebug(c, "StreamScannerHandler: calling FinalizeResponseBody")
+		}
+		info.FinalizeResponseBody()
 	}
 }
